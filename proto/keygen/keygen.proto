@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package keygen;
+
+option go_package = "gotiny/proto/keygen";
+
+service KeyGenService {
+  rpc GetKey(GetKeyRequest) returns (GetKeyResponse);
+}
+
+message GetKeyRequest {}
+
+message GetKeyResponse {
+  string key = 1;
+}
