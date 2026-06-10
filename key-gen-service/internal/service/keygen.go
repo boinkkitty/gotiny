@@ -2,26 +2,23 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"sync"
 	"time"
-
-	"gotiny/key-gen-service/internal/repository"
 )
 
-// KeyGenService manages a pre-generated pool of short URL keys.
-//
-//	┌──────────┐   ClaimBatch    ┌──────────┐   GetKey()    ┌──────────┐
-//	│ available │ ──────────────► │ claimed  │ ────────────► │   used   │
-//	└──────────┘                 └──────────┘               └──────────┘
-//	     ▲                            │
-//	     │ GenerateBatch              │ (leaked on crash,
-//	     │                            │  accept waste for MVP)
-//	  background
-//	  goroutine
+var ErrPoolExhausted = errors.New("key pool exhausted")
+
+type KeyRepository interface {
+	ClaimBatch(ctx context.Context, instanceID string, batchSize int) ([]string, error)
+	CountAvailable(ctx context.Context) (int64, error)
+	GenerateBatch(ctx context.Context, count int) (int64, error)
+}
+
 type KeyGenService struct {
-	repo       *repository.KeysRepository
+	repo       KeyRepository
 	instanceID string
 
 	mu     sync.Mutex
@@ -51,7 +48,7 @@ func DefaultConfig(instanceID string) Config {
 	}
 }
 
-func NewKeyGenService(repo *repository.KeysRepository, cfg Config) *KeyGenService {
+func NewKeyGenService(repo KeyRepository, cfg Config) *KeyGenService {
 	return &KeyGenService{
 		repo:          repo,
 		instanceID:    cfg.InstanceID,
@@ -87,7 +84,7 @@ func (s *KeyGenService) GetKey(ctx context.Context) (string, error) {
 			return "", fmt.Errorf("refill buffer: %w", err)
 		}
 		if len(s.buffer) == 0 {
-			return "", fmt.Errorf("key pool exhausted")
+			return "", ErrPoolExhausted
 		}
 	}
 

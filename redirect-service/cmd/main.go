@@ -48,12 +48,7 @@ func main() {
 		slog.Info("redis connected", "addr", redisAddr)
 	}
 
-	var repo *repository.URLRepository
-	if rdb != nil {
-		repo = repository.NewURLRepository(pool, rdb)
-	} else {
-		repo = repository.NewURLRepository(pool, nil)
-	}
+	repo := repository.NewURLRepository(pool, rdb)
 
 	grpcServer := grpc.NewServer()
 	pb.RegisterRedirectServiceServer(grpcServer, handler.NewRedirectHandler(repo))

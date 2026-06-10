@@ -12,12 +12,16 @@ import (
 	"gotiny/redirect-service/internal/repository"
 )
 
-type RedirectHandler struct {
-	pb.UnimplementedRedirectServiceServer
-	repo *repository.URLRepository
+type URLResolver interface {
+	Resolve(ctx context.Context, shortCode string) (string, error)
 }
 
-func NewRedirectHandler(repo *repository.URLRepository) *RedirectHandler {
+type RedirectHandler struct {
+	pb.UnimplementedRedirectServiceServer
+	repo URLResolver
+}
+
+func NewRedirectHandler(repo URLResolver) *RedirectHandler {
 	return &RedirectHandler{repo: repo}
 }
 

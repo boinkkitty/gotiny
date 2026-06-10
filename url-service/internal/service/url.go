@@ -6,15 +6,18 @@ import (
 	"log/slog"
 
 	pb "gotiny/proto/keygen"
-	"gotiny/url-service/internal/repository"
 )
 
+type URLRepository interface {
+	Store(ctx context.Context, shortCode, originalURL string) error
+}
+
 type URLService struct {
-	repo         *repository.URLRepository
+	repo         URLRepository
 	keygenClient pb.KeyGenServiceClient
 }
 
-func NewURLService(repo *repository.URLRepository, keygenClient pb.KeyGenServiceClient) *URLService {
+func NewURLService(repo URLRepository, keygenClient pb.KeyGenServiceClient) *URLService {
 	return &URLService{
 		repo:         repo,
 		keygenClient: keygenClient,
