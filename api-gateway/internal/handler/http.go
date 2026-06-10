@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
+	"regexp"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -38,7 +39,13 @@ type errorResponse struct {
 	Message string `json:"message"`
 }
 
+const maxRequestBodySize = 1 << 20 // 1 MB
+const maxURLLength = 2048
+
+var shortCodePattern = regexp.MustCompile(`^[0-9A-Za-z]{1,7}$`)
+
 func (h *HTTPHandler) Shorten(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodySize)
 	var req shortenRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid_request", "invalid JSON body")
@@ -51,12 +58,12 @@ func (h *HTTPHandler) Shorten(w http.ResponseWriter, r *http.Request) {
 	}
 
 	parsed, err := url.ParseRequestURI(req.URL)
-	if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") {
+	if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Host == "" {
 		writeError(w, http.StatusBadRequest, "invalid_url", "url must be a valid http or https URL")
 		return
 	}
 
-	if len(req.URL) > 2048 {
+	if len(req.URL) > maxURLLength {
 		writeError(w, http.StatusBadRequest, "url_too_long", "url must be 2048 characters or fewer")
 		return
 	}
@@ -78,6 +85,10 @@ func (h *HTTPHandler) Redirect(w http.ResponseWriter, r *http.Request) {
 	code := r.PathValue("code")
 	if code == "" {
 		writeError(w, http.StatusBadRequest, "missing_code", "short code is required")
+		return
+	}
+	if !shortCodePattern.MatchString(code) {
+		writeError(w, http.StatusBadRequest, "invalid_code", "short code must be 1-7 alphanumeric characters")
 		return
 	}
 

@@ -48,6 +48,9 @@ func (r *KeysRepository) ClaimBatch(ctx context.Context, instanceID string, batc
 		codes = append(codes, code)
 	}
 	rows.Close()
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate key rows: %w", err)
+	}
 
 	if len(ids) == 0 {
 		return nil, nil
@@ -87,23 +90,35 @@ func (r *KeysRepository) CountAvailable(ctx context.Context) (int64, error) {
 // GenerateBatch inserts a batch of random base62 keys into the pool.
 func (r *KeysRepository) GenerateBatch(ctx context.Context, count int) (int64, error) {
 	const keyLength = 7
+	const batchSize = 1000
 
-	query := `INSERT INTO keys (code) VALUES ($1) ON CONFLICT (code) DO NOTHING`
-	var inserted int64
+	var totalInserted int64
 
-	for i := 0; i < count; i++ {
-		code, err := randomBase62(keyLength)
-		if err != nil {
-			return inserted, fmt.Errorf("generate random key: %w", err)
+	for start := 0; start < count; start += batchSize {
+		end := start + batchSize
+		if end > count {
+			end = count
 		}
-		tag, err := r.pool.Exec(ctx, query, code)
-		if err != nil {
-			return inserted, fmt.Errorf("insert key: %w", err)
+		n := end - start
+
+		codes := make([]string, 0, n)
+		for i := 0; i < n; i++ {
+			code, err := randomBase62(keyLength)
+			if err != nil {
+				return totalInserted, fmt.Errorf("generate random key: %w", err)
+			}
+			codes = append(codes, code)
 		}
-		inserted += tag.RowsAffected()
+
+		query := `INSERT INTO keys (code) SELECT unnest($1::varchar[]) ON CONFLICT (code) DO NOTHING`
+		tag, err := r.pool.Exec(ctx, query, codes)
+		if err != nil {
+			return totalInserted, fmt.Errorf("batch insert keys: %w", err)
+		}
+		totalInserted += tag.RowsAffected()
 	}
 
-	return inserted, nil
+	return totalInserted, nil
 }
 
 func randomBase62(length int) (string, error) {
