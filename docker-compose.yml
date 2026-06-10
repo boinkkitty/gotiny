@@ -1,0 +1,89 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: gotiny
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./migrations/001_init.up.sql:/docker-entrypoint-initdb.d/001_init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 2s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 5s
+      retries: 5
+
+  key-gen-service:
+    build:
+      context: .
+      dockerfile: key-gen-service/Dockerfile
+    environment:
+      PORT: "50053"
+      DATABASE_URL: "postgres://postgres:postgres@postgres:5432/gotiny?sslmode=disable"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: on-failure
+
+  url-service:
+    build:
+      context: .
+      dockerfile: url-service/Dockerfile
+    environment:
+      PORT: "50051"
+      DATABASE_URL: "postgres://postgres:postgres@postgres:5432/gotiny?sslmode=disable"
+      KEY_GEN_ADDR: "key-gen-service:50053"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      key-gen-service:
+        condition: service_started
+    restart: on-failure
+
+  redirect-service:
+    build:
+      context: .
+      dockerfile: redirect-service/Dockerfile
+    environment:
+      PORT: "50052"
+      DATABASE_URL: "postgres://postgres:postgres@postgres:5432/gotiny?sslmode=disable"
+      REDIS_ADDR: "redis:6379"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: on-failure
+
+  api-gateway:
+    build:
+      context: .
+      dockerfile: api-gateway/Dockerfile
+    ports:
+      - "8081:8080"
+    environment:
+      PORT: "8080"
+      URL_SERVICE_ADDR: "url-service:50051"
+      REDIRECT_SERVICE_ADDR: "redirect-service:50052"
+    depends_on:
+      url-service:
+        condition: service_started
+      redirect-service:
+        condition: service_started
+    restart: on-failure
+
+volumes:
+  pgdata:

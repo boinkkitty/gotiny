@@ -1,0 +1,39 @@
+package handler
+
+import (
+	"context"
+	"errors"
+	"log/slog"
+
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+
+	pb "gotiny/proto/redirect"
+	"gotiny/redirect-service/internal/repository"
+)
+
+type RedirectHandler struct {
+	pb.UnimplementedRedirectServiceServer
+	repo *repository.URLRepository
+}
+
+func NewRedirectHandler(repo *repository.URLRepository) *RedirectHandler {
+	return &RedirectHandler{repo: repo}
+}
+
+func (h *RedirectHandler) Resolve(ctx context.Context, req *pb.ResolveRequest) (*pb.ResolveResponse, error) {
+	if req.ShortCode == "" {
+		return nil, status.Error(codes.InvalidArgument, "short_code is required")
+	}
+
+	originalURL, err := h.repo.Resolve(ctx, req.ShortCode)
+	if err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return nil, status.Errorf(codes.NotFound, "short code %q not found", req.ShortCode)
+		}
+		slog.Error("resolve failed", "error", err, "short_code", req.ShortCode)
+		return nil, status.Error(codes.Unavailable, "service unavailable")
+	}
+
+	return &pb.ResolveResponse{OriginalUrl: originalURL}, nil
+}
