@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"google.golang.org/grpc"
@@ -90,7 +91,7 @@ func TestShortenInvalidScheme(t *testing.T) {
 func TestShortenURLTooLong(t *testing.T) {
 	h := handler.NewHTTPHandler(&stubURLClient{}, &stubRedirectClient{})
 
-	longURL := "https://example.com/" + string(make([]byte, 2048))
+	longURL := "https://example.com/" + strings.Repeat("a", 2030)
 	body, _ := json.Marshal(map[string]string{"url": longURL})
 	req := httptest.NewRequest(http.MethodPost, "/shorten", bytes.NewReader(body))
 	w := httptest.NewRecorder()
@@ -184,6 +185,34 @@ func TestRedirectEmptyCode(t *testing.T) {
 
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("expected 400, got %d", w.Code)
+	}
+}
+
+func TestRedirectInvalidCode(t *testing.T) {
+	h := handler.NewHTTPHandler(&stubURLClient{}, &stubRedirectClient{})
+
+	req := httptest.NewRequest(http.MethodGet, "/../etc/passwd", nil)
+	req.SetPathValue("code", "../etc/passwd")
+	w := httptest.NewRecorder()
+
+	h.Redirect(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected 400 for invalid code, got %d", w.Code)
+	}
+}
+
+func TestShortenEmptyHost(t *testing.T) {
+	h := handler.NewHTTPHandler(&stubURLClient{}, &stubRedirectClient{})
+
+	body := bytes.NewBufferString(`{"url":"https:///path"}`)
+	req := httptest.NewRequest(http.MethodPost, "/shorten", body)
+	w := httptest.NewRecorder()
+
+	h.Shorten(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected 400 for empty host, got %d", w.Code)
 	}
 }
 
