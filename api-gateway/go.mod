@@ -2,10 +2,15 @@ module gotiny/api-gateway
 
 go 1.26.2
 
-replace gotiny/proto => ../proto
+replace (
+	gotiny/pkg => ../pkg
+	gotiny/proto => ../proto
+)
 
 require (
+	github.com/golang-jwt/jwt/v5 v5.2.2
 	google.golang.org/grpc v1.81.1
+	gotiny/pkg v0.0.0-00010101000000-000000000000
 	gotiny/proto v0.0.0-00010101000000-000000000000
 )
 
