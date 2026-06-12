@@ -5,11 +5,17 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"math/rand/v2"
 	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
+)
+
+const (
+	baseCacheTTL  = 6 * time.Hour
+	jitterMaxSecs = 60
 )
 
 var ErrNotFound = errors.New("short code not found")
@@ -48,12 +54,23 @@ func (r *URLRepository) Resolve(ctx context.Context, shortCode string) (string, 
 	}
 
 	if r.redis != nil {
-		if err := r.redis.Set(ctx, cacheKey(shortCode), originalURL, 24*time.Hour).Err(); err != nil {
+		ttl := baseCacheTTL + time.Duration(rand.IntN(jitterMaxSecs))*time.Second
+		if err := r.redis.Set(ctx, cacheKey(shortCode), originalURL, ttl).Err(); err != nil {
 			slog.Warn("redis set failed", "error", err)
 		}
 	}
 
 	return originalURL, nil
+}
+
+func (r *URLRepository) InvalidateCache(ctx context.Context, shortCode string) error {
+	if r.redis == nil {
+		return nil
+	}
+	if err := r.redis.Del(ctx, cacheKey(shortCode)).Err(); err != nil {
+		return fmt.Errorf("redis del: %w", err)
+	}
+	return nil
 }
 
 func cacheKey(shortCode string) string {

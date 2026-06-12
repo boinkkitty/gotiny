@@ -22,6 +22,10 @@ func (m *mockResolver) Resolve(_ context.Context, _ string) (string, error) {
 	return m.url, m.err
 }
 
+func (m *mockResolver) InvalidateCache(_ context.Context, _ string) error {
+	return nil
+}
+
 func TestResolve_Success(t *testing.T) {
 	h := handler.NewRedirectHandler(&mockResolver{url: "https://example.com"})
 
@@ -70,5 +74,30 @@ func TestResolve_InternalError(t *testing.T) {
 	st, _ := status.FromError(err)
 	if st.Code() != codes.Unavailable {
 		t.Errorf("expected Unavailable, got %v", st.Code())
+	}
+}
+
+func TestInvalidateCache_Success(t *testing.T) {
+	h := handler.NewRedirectHandler(&mockResolver{})
+
+	resp, err := h.InvalidateCache(context.Background(), &pb.InvalidateCacheRequest{ShortCode: "abc1234"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if resp == nil {
+		t.Fatal("expected non-nil response")
+	}
+}
+
+func TestInvalidateCache_EmptyShortCode(t *testing.T) {
+	h := handler.NewRedirectHandler(&mockResolver{})
+
+	_, err := h.InvalidateCache(context.Background(), &pb.InvalidateCacheRequest{ShortCode: ""})
+	if err == nil {
+		t.Fatal("expected error for empty short code")
+	}
+	st, _ := status.FromError(err)
+	if st.Code() != codes.InvalidArgument {
+		t.Errorf("expected InvalidArgument, got %v", st.Code())
 	}
 }
