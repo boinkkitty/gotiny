@@ -6,6 +6,9 @@ option go_package = "gotiny/proto/url";
 
 service URLService {
   rpc CreateShortURL(CreateShortURLRequest) returns (CreateShortURLResponse);
+  rpc GetURL(GetURLRequest) returns (GetURLResponse);
+  rpc ListURLs(ListURLsRequest) returns (ListURLsResponse);
+  rpc DeleteURL(DeleteURLRequest) returns (DeleteURLResponse);
 }
 
 message CreateShortURLRequest {
@@ -15,3 +18,32 @@ message CreateShortURLRequest {
 message CreateShortURLResponse {
   string short_code = 1;
 }
+
+message GetURLRequest {
+  string short_code = 1;
+  int64 user_id = 2;
+}
+
+message GetURLResponse {
+  string short_code = 1;
+  string original_url = 2;
+  string created_at = 3;
+}
+
+message ListURLsRequest {
+  int64 user_id = 1;
+  int32 limit = 2;
+  int32 offset = 3;
+}
+
+message ListURLsResponse {
+  repeated GetURLResponse urls = 1;
+  int32 total = 2;
+}
+
+message DeleteURLRequest {
+  string short_code = 1;
+  int64 user_id = 2;
+}
+
+message DeleteURLResponse {}

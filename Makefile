@@ -1,12 +1,12 @@
-.PHONY: proto build test lint up down clean seed
+.PHONY: proto build test lint up down clean seed migrate
 
-SERVICES := key-gen-service url-service redirect-service api-gateway
+SERVICES := key-gen-service url-service redirect-service user-service api-gateway
 
 proto:
-	protoc --proto_path=. \
+	export PATH="$$HOME/go/bin:$$PATH" && protoc --proto_path=. \
 		--go_out=proto --go-grpc_out=proto \
 		--go_opt=module=gotiny/proto --go-grpc_opt=module=gotiny/proto \
-		proto/keygen/keygen.proto proto/url/url.proto proto/redirect/redirect.proto
+		proto/keygen/keygen.proto proto/url/url.proto proto/redirect/redirect.proto proto/user/user.proto
 
 build:
 	@for svc in $(SERVICES); do \
@@ -46,3 +46,6 @@ seed:
 		SELECT substr(md5(random()::text), 1, 7) \
 		FROM generate_series(1, 1000) \
 		ON CONFLICT (code) DO NOTHING;"
+
+migrate:
+	docker compose exec postgres psql -U postgres -d gotiny -f /docker-entrypoint-initdb.d/002_auth.sql

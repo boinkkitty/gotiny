@@ -14,6 +14,7 @@ import (
 
 type URLResolver interface {
 	Resolve(ctx context.Context, shortCode string) (string, error)
+	InvalidateCache(ctx context.Context, shortCode string) error
 }
 
 type RedirectHandler struct {
@@ -40,4 +41,17 @@ func (h *RedirectHandler) Resolve(ctx context.Context, req *pb.ResolveRequest) (
 	}
 
 	return &pb.ResolveResponse{OriginalUrl: originalURL}, nil
+}
+
+func (h *RedirectHandler) InvalidateCache(ctx context.Context, req *pb.InvalidateCacheRequest) (*pb.InvalidateCacheResponse, error) {
+	if req.ShortCode == "" {
+		return nil, status.Error(codes.InvalidArgument, "short_code is required")
+	}
+
+	if err := h.repo.InvalidateCache(ctx, req.ShortCode); err != nil {
+		slog.Error("invalidate cache failed", "error", err, "short_code", req.ShortCode)
+		return nil, status.Error(codes.Internal, "cache invalidation failed")
+	}
+
+	return &pb.InvalidateCacheResponse{}, nil
 }

@@ -19,7 +19,8 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	RedirectService_Resolve_FullMethodName = "/redirect.RedirectService/Resolve"
+	RedirectService_Resolve_FullMethodName         = "/redirect.RedirectService/Resolve"
+	RedirectService_InvalidateCache_FullMethodName = "/redirect.RedirectService/InvalidateCache"
 )
 
 // RedirectServiceClient is the client API for RedirectService service.
@@ -27,6 +28,7 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type RedirectServiceClient interface {
 	Resolve(ctx context.Context, in *ResolveRequest, opts ...grpc.CallOption) (*ResolveResponse, error)
+	InvalidateCache(ctx context.Context, in *InvalidateCacheRequest, opts ...grpc.CallOption) (*InvalidateCacheResponse, error)
 }
 
 type redirectServiceClient struct {
@@ -47,11 +49,22 @@ func (c *redirectServiceClient) Resolve(ctx context.Context, in *ResolveRequest,
 	return out, nil
 }
 
+func (c *redirectServiceClient) InvalidateCache(ctx context.Context, in *InvalidateCacheRequest, opts ...grpc.CallOption) (*InvalidateCacheResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(InvalidateCacheResponse)
+	err := c.cc.Invoke(ctx, RedirectService_InvalidateCache_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // RedirectServiceServer is the server API for RedirectService service.
 // All implementations must embed UnimplementedRedirectServiceServer
 // for forward compatibility.
 type RedirectServiceServer interface {
 	Resolve(context.Context, *ResolveRequest) (*ResolveResponse, error)
+	InvalidateCache(context.Context, *InvalidateCacheRequest) (*InvalidateCacheResponse, error)
 	mustEmbedUnimplementedRedirectServiceServer()
 }
 
@@ -64,6 +77,9 @@ type UnimplementedRedirectServiceServer struct{}
 
 func (UnimplementedRedirectServiceServer) Resolve(context.Context, *ResolveRequest) (*ResolveResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method Resolve not implemented")
+}
+func (UnimplementedRedirectServiceServer) InvalidateCache(context.Context, *InvalidateCacheRequest) (*InvalidateCacheResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method InvalidateCache not implemented")
 }
 func (UnimplementedRedirectServiceServer) mustEmbedUnimplementedRedirectServiceServer() {}
 func (UnimplementedRedirectServiceServer) testEmbeddedByValue()                         {}
@@ -104,6 +120,24 @@ func _RedirectService_Resolve_Handler(srv interface{}, ctx context.Context, dec 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _RedirectService_InvalidateCache_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(InvalidateCacheRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RedirectServiceServer).InvalidateCache(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: RedirectService_InvalidateCache_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RedirectServiceServer).InvalidateCache(ctx, req.(*InvalidateCacheRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // RedirectService_ServiceDesc is the grpc.ServiceDesc for RedirectService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -114,6 +148,10 @@ var RedirectService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Resolve",
 			Handler:    _RedirectService_Resolve_Handler,
+		},
+		{
+			MethodName: "InvalidateCache",
+			Handler:    _RedirectService_InvalidateCache_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

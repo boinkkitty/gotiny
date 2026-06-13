@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.0.0] - 2026-06-13
+
+### Added
+- User authentication service with registration, login, JWT token issuance, refresh token rotation, and logout
+- JWT middleware on API gateway protecting link creation, listing, and deletion endpoints
+- Link ownership enforcement: users can only view and delete their own shortened URLs
+- New REST endpoints: POST /register, POST /login, POST /refresh, POST /logout, GET /urls, DELETE /urls/:code
+- gRPC metadata-based user_id propagation from API gateway to backend services via shared `pkg/grpcutil` helper
+- Cache invalidation RPC on redirect service, called on link deletion to bust stale Redis entries
+- Schema migration 002: users table, refresh_tokens table with partial index, user_id foreign key on urls
+- User service Docker container with JWT_SECRET configuration
+
+### Changed
+- POST /shorten now requires Bearer token authentication (breaking change)
+- Redis cache TTL changed from fixed 24h to 6h base with random 0-60s jitter to prevent cache stampede
+- API gateway error handling expanded with 401, 403, and 409 responses for auth flows
+
 ## [0.1.0.0] - 2026-06-10
 
 ### Added

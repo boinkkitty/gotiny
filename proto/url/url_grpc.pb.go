@@ -20,6 +20,9 @@ const _ = grpc.SupportPackageIsVersion9
 
 const (
 	URLService_CreateShortURL_FullMethodName = "/url.URLService/CreateShortURL"
+	URLService_GetURL_FullMethodName         = "/url.URLService/GetURL"
+	URLService_ListURLs_FullMethodName       = "/url.URLService/ListURLs"
+	URLService_DeleteURL_FullMethodName      = "/url.URLService/DeleteURL"
 )
 
 // URLServiceClient is the client API for URLService service.
@@ -27,6 +30,9 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type URLServiceClient interface {
 	CreateShortURL(ctx context.Context, in *CreateShortURLRequest, opts ...grpc.CallOption) (*CreateShortURLResponse, error)
+	GetURL(ctx context.Context, in *GetURLRequest, opts ...grpc.CallOption) (*GetURLResponse, error)
+	ListURLs(ctx context.Context, in *ListURLsRequest, opts ...grpc.CallOption) (*ListURLsResponse, error)
+	DeleteURL(ctx context.Context, in *DeleteURLRequest, opts ...grpc.CallOption) (*DeleteURLResponse, error)
 }
 
 type uRLServiceClient struct {
@@ -47,11 +53,44 @@ func (c *uRLServiceClient) CreateShortURL(ctx context.Context, in *CreateShortUR
 	return out, nil
 }
 
+func (c *uRLServiceClient) GetURL(ctx context.Context, in *GetURLRequest, opts ...grpc.CallOption) (*GetURLResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetURLResponse)
+	err := c.cc.Invoke(ctx, URLService_GetURL_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *uRLServiceClient) ListURLs(ctx context.Context, in *ListURLsRequest, opts ...grpc.CallOption) (*ListURLsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListURLsResponse)
+	err := c.cc.Invoke(ctx, URLService_ListURLs_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *uRLServiceClient) DeleteURL(ctx context.Context, in *DeleteURLRequest, opts ...grpc.CallOption) (*DeleteURLResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DeleteURLResponse)
+	err := c.cc.Invoke(ctx, URLService_DeleteURL_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // URLServiceServer is the server API for URLService service.
 // All implementations must embed UnimplementedURLServiceServer
 // for forward compatibility.
 type URLServiceServer interface {
 	CreateShortURL(context.Context, *CreateShortURLRequest) (*CreateShortURLResponse, error)
+	GetURL(context.Context, *GetURLRequest) (*GetURLResponse, error)
+	ListURLs(context.Context, *ListURLsRequest) (*ListURLsResponse, error)
+	DeleteURL(context.Context, *DeleteURLRequest) (*DeleteURLResponse, error)
 	mustEmbedUnimplementedURLServiceServer()
 }
 
@@ -64,6 +103,15 @@ type UnimplementedURLServiceServer struct{}
 
 func (UnimplementedURLServiceServer) CreateShortURL(context.Context, *CreateShortURLRequest) (*CreateShortURLResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method CreateShortURL not implemented")
+}
+func (UnimplementedURLServiceServer) GetURL(context.Context, *GetURLRequest) (*GetURLResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetURL not implemented")
+}
+func (UnimplementedURLServiceServer) ListURLs(context.Context, *ListURLsRequest) (*ListURLsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListURLs not implemented")
+}
+func (UnimplementedURLServiceServer) DeleteURL(context.Context, *DeleteURLRequest) (*DeleteURLResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method DeleteURL not implemented")
 }
 func (UnimplementedURLServiceServer) mustEmbedUnimplementedURLServiceServer() {}
 func (UnimplementedURLServiceServer) testEmbeddedByValue()                    {}
@@ -104,6 +152,60 @@ func _URLService_CreateShortURL_Handler(srv interface{}, ctx context.Context, de
 	return interceptor(ctx, in, info, handler)
 }
 
+func _URLService_GetURL_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetURLRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(URLServiceServer).GetURL(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: URLService_GetURL_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(URLServiceServer).GetURL(ctx, req.(*GetURLRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _URLService_ListURLs_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListURLsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(URLServiceServer).ListURLs(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: URLService_ListURLs_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(URLServiceServer).ListURLs(ctx, req.(*ListURLsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _URLService_DeleteURL_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteURLRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(URLServiceServer).DeleteURL(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: URLService_DeleteURL_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(URLServiceServer).DeleteURL(ctx, req.(*DeleteURLRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // URLService_ServiceDesc is the grpc.ServiceDesc for URLService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -114,6 +216,18 @@ var URLService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "CreateShortURL",
 			Handler:    _URLService_CreateShortURL_Handler,
+		},
+		{
+			MethodName: "GetURL",
+			Handler:    _URLService_GetURL_Handler,
+		},
+		{
+			MethodName: "ListURLs",
+			Handler:    _URLService_ListURLs_Handler,
+		},
+		{
+			MethodName: "DeleteURL",
+			Handler:    _URLService_DeleteURL_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
