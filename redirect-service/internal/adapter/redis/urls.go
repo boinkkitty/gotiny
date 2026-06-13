@@ -8,6 +8,8 @@ import (
 	"time"
 
 	goredis "github.com/redis/go-redis/v9"
+
+	"gotiny/redirect-service/internal/domain"
 )
 
 const (
@@ -26,7 +28,7 @@ func NewURLCache(client *goredis.Client) *URLCache {
 func (c *URLCache) Get(ctx context.Context, shortCode string) (string, error) {
 	val, err := c.client.Get(ctx, cacheKey(shortCode)).Result()
 	if errors.Is(err, goredis.Nil) {
-		return "", err
+		return "", domain.ErrCacheMiss
 	}
 	if err != nil {
 		return "", fmt.Errorf("redis get: %w", err)

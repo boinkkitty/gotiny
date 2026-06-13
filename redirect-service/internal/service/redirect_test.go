@@ -39,7 +39,7 @@ func (m *mockCache) Get(_ context.Context, shortCode string) (string, error) {
 	if v, ok := m.store[shortCode]; ok {
 		return v, nil
 	}
-	return "", errors.New("not in cache")
+	return "", domain.ErrCacheMiss
 }
 
 func (m *mockCache) Set(_ context.Context, shortCode, url string) error {

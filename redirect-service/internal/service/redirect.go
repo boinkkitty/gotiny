@@ -2,8 +2,10 @@ package service
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 
+	"gotiny/redirect-service/internal/domain"
 	"gotiny/redirect-service/internal/port"
 )
 
@@ -23,7 +25,9 @@ func (s *RedirectService) Resolve(ctx context.Context, shortCode string) (string
 			slog.Debug("cache hit", "short_code", shortCode)
 			return cached, nil
 		}
-		slog.Warn("cache get failed, falling back to postgres", "error", err, "short_code", shortCode)
+		if !errors.Is(err, domain.ErrCacheMiss) {
+			slog.Warn("cache get failed, falling back to postgres", "error", err, "short_code", shortCode)
+		}
 	}
 
 	originalURL, err := s.reader.Resolve(ctx, shortCode)
