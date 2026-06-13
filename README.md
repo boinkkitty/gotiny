@@ -105,6 +105,7 @@ gotiny/
 ├── user-service/        # User auth (register, login, JWT lifecycle)
 ├── proto/               # Shared Protocol Buffer definitions
 ├── pkg/                 # Shared Go packages (database, grpcutil)
+├── docs/                # Architecture and flow diagrams
 ├── migrations/          # PostgreSQL schema migrations
 ├── docker-compose.yml   # Full stack orchestration (6 services)
 └── Makefile             # Build, test, run commands
