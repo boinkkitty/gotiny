@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.1.0] - 2026-06-13
+
+### Changed
+- Restructured all four gRPC services to hexagonal architecture with `domain/`, `port/`, `adapter/`, and `server/` packages
+- Extracted shared `pkg/config.EnvOr` helper, replacing duplicated `envOr` functions across five services
+- Extracted shared `pkg/logger.Init` helper for consistent structured logging setup
+- Extracted shared `pkg/grpcutil.RunServer` for gRPC server lifecycle with health checking and graceful shutdown with force-stop timeout
+- Split redirect-service repository into separate postgres adapter and redis cache adapter behind port interfaces
+- Moved domain errors and entities from repository/service packages into dedicated `domain/` packages
+- Moved gRPC transport handlers from `handler/` to `server/` for clear transport-type naming
+- Removed unused `MarkUsed` method from key-gen repository
+- Removed `Revoked` field from `domain.RefreshToken`, enforcing revocation checks at the adapter layer
+
+### Fixed
+- Cache miss in redirect service no longer logs spurious WARN on every cold request
+
 ## [0.2.0.0] - 2026-06-13
 
 ### Added
