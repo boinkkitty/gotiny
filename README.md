@@ -104,7 +104,7 @@ gotiny/
 ├── key-gen-service/     # Distributed key pool management
 ├── user-service/        # User auth (register, login, JWT lifecycle)
 ├── proto/               # Shared Protocol Buffer definitions
-├── pkg/                 # Shared Go packages (database, grpcutil)
+├── pkg/                 # Shared Go packages (config, database, grpcutil, logger)
 ├── docs/                # Architecture and flow diagrams
 ├── migrations/          # PostgreSQL schema migrations
 ├── docker-compose.yml   # Full stack orchestration (6 services)
@@ -124,7 +124,7 @@ make lint     # Run go vet on all services
 
 ```bash
 cd redirect-service
-go test -bench=. -benchmem ./internal/repository/
+go test -bench=. -benchmem ./internal/adapter/postgres/
 ```
 
 ## Tech Stack
