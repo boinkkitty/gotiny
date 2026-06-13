@@ -33,7 +33,7 @@ func TestJWTMiddleware_ValidToken(t *testing.T) {
 
 	var capturedUserID int64
 	inner := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		capturedUserID, _ = r.Context().Value(handler.ExportedUserIDContextKey).(int64)
+		capturedUserID, _ = handler.UserIDFromContextForTest(r.Context())
 		w.WriteHeader(http.StatusOK)
 	})
 

@@ -197,7 +197,11 @@ func (h *HTTPHandler) Shorten(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userID := userIDFromContext(r.Context())
+	userID, ok := userIDFromContext(r.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "unauthorized", "missing user identity")
+		return
+	}
 	ctx := grpcutil.ContextWithUserID(r.Context(), userID)
 
 	resp, err := h.urlClient.CreateShortURL(ctx, &urlpb.CreateShortURLRequest{
@@ -214,7 +218,11 @@ func (h *HTTPHandler) Shorten(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *HTTPHandler) ListURLs(w http.ResponseWriter, r *http.Request) {
-	userID := userIDFromContext(r.Context())
+	userID, ok := userIDFromContext(r.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "unauthorized", "missing user identity")
+		return
+	}
 
 	limit := int32(20)
 	offset := int32(0)
@@ -261,7 +269,11 @@ func (h *HTTPHandler) DeleteURL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userID := userIDFromContext(r.Context())
+	userID, ok := userIDFromContext(r.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "unauthorized", "missing user identity")
+		return
+	}
 
 	_, err := h.urlClient.DeleteURL(r.Context(), &urlpb.DeleteURLRequest{
 		ShortCode: code,

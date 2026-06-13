@@ -105,7 +105,7 @@ func TestShortenValidURL(t *testing.T) {
 
 	body := bytes.NewBufferString(`{"url":"https://example.com"}`)
 	req := httptest.NewRequest(http.MethodPost, "/shorten", body)
-	req = req.WithContext(context.WithValue(req.Context(), handler.ExportedUserIDContextKey, int64(1)))
+	req = req.WithContext(handler.ContextWithUserIDForTest(req.Context(), 1))
 	w := httptest.NewRecorder()
 
 	h.Shorten(w, req)
@@ -172,7 +172,7 @@ func TestShortenServiceUnavailable(t *testing.T) {
 
 	body := bytes.NewBufferString(`{"url":"https://example.com"}`)
 	req := httptest.NewRequest(http.MethodPost, "/shorten", body)
-	req = req.WithContext(context.WithValue(req.Context(), handler.ExportedUserIDContextKey, int64(1)))
+	req = req.WithContext(handler.ContextWithUserIDForTest(req.Context(), 1))
 	w := httptest.NewRecorder()
 
 	h.Shorten(w, req)
@@ -190,7 +190,7 @@ func TestShortenPoolExhausted(t *testing.T) {
 
 	body := bytes.NewBufferString(`{"url":"https://example.com"}`)
 	req := httptest.NewRequest(http.MethodPost, "/shorten", body)
-	req = req.WithContext(context.WithValue(req.Context(), handler.ExportedUserIDContextKey, int64(1)))
+	req = req.WithContext(handler.ContextWithUserIDForTest(req.Context(), 1))
 	w := httptest.NewRecorder()
 
 	h.Shorten(w, req)
@@ -375,7 +375,7 @@ func TestDeleteURL_Forbidden(t *testing.T) {
 
 	req := httptest.NewRequest(http.MethodDelete, "/urls/abc1234", nil)
 	req.SetPathValue("code", "abc1234")
-	req = req.WithContext(context.WithValue(req.Context(), handler.ExportedUserIDContextKey, int64(99)))
+	req = req.WithContext(handler.ContextWithUserIDForTest(req.Context(), 99))
 	w := httptest.NewRecorder()
 
 	h.DeleteURL(w, req)
@@ -392,7 +392,7 @@ func TestListURLs_EmptyList(t *testing.T) {
 	)
 
 	req := httptest.NewRequest(http.MethodGet, "/urls", nil)
-	req = req.WithContext(context.WithValue(req.Context(), handler.ExportedUserIDContextKey, int64(1)))
+	req = req.WithContext(handler.ContextWithUserIDForTest(req.Context(), 1))
 	w := httptest.NewRecorder()
 
 	h.ListURLs(w, req)

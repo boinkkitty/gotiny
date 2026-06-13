@@ -8,12 +8,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-type contextKey string
-
-const userIDContextKey contextKey = "user_id"
-
-// ExportedUserIDContextKey is exported for tests to set user_id in context.
-var ExportedUserIDContextKey = userIDContextKey
+type userIDKey struct{}
 
 func JWTMiddleware(secret []byte) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
@@ -48,13 +43,17 @@ func JWTMiddleware(secret []byte) func(http.Handler) http.Handler {
 				return
 			}
 
-			ctx := context.WithValue(r.Context(), userIDContextKey, int64(subFloat))
+			ctx := contextWithUserID(r.Context(), int64(subFloat))
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
 }
 
-func userIDFromContext(ctx context.Context) int64 {
-	id, _ := ctx.Value(userIDContextKey).(int64)
-	return id
+func contextWithUserID(ctx context.Context, id int64) context.Context {
+	return context.WithValue(ctx, userIDKey{}, id)
+}
+
+func userIDFromContext(ctx context.Context) (int64, bool) {
+	id, ok := ctx.Value(userIDKey{}).(int64)
+	return id, ok
 }
