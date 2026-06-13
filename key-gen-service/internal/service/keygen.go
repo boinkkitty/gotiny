@@ -2,23 +2,17 @@ package service
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
 	"sync"
 	"time"
+
+	"gotiny/key-gen-service/internal/domain"
+	"gotiny/key-gen-service/internal/port"
 )
 
-var ErrPoolExhausted = errors.New("key pool exhausted")
-
-type KeyRepository interface {
-	ClaimBatch(ctx context.Context, instanceID string, batchSize int) ([]string, error)
-	CountAvailable(ctx context.Context) (int64, error)
-	GenerateBatch(ctx context.Context, count int) (int64, error)
-}
-
 type KeyGenService struct {
-	repo       KeyRepository
+	repo       port.KeyRepository
 	instanceID string
 
 	mu     sync.Mutex
@@ -48,7 +42,7 @@ func DefaultConfig(instanceID string) Config {
 	}
 }
 
-func NewKeyGenService(repo KeyRepository, cfg Config) *KeyGenService {
+func NewKeyGenService(repo port.KeyRepository, cfg Config) *KeyGenService {
 	return &KeyGenService{
 		repo:          repo,
 		instanceID:    cfg.InstanceID,
@@ -59,7 +53,6 @@ func NewKeyGenService(repo KeyRepository, cfg Config) *KeyGenService {
 	}
 }
 
-// Init fills the buffer and starts the background pool replenisher.
 func (s *KeyGenService) Init(ctx context.Context) error {
 	if err := s.refillBuffer(ctx); err != nil {
 		return fmt.Errorf("initial buffer fill: %w", err)
@@ -74,7 +67,6 @@ func (s *KeyGenService) Init(ctx context.Context) error {
 	return nil
 }
 
-// GetKey returns the next available key from the buffer, refilling if needed.
 func (s *KeyGenService) GetKey(ctx context.Context) (string, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -84,7 +76,7 @@ func (s *KeyGenService) GetKey(ctx context.Context) (string, error) {
 			return "", fmt.Errorf("refill buffer: %w", err)
 		}
 		if len(s.buffer) == 0 {
-			return "", ErrPoolExhausted
+			return "", domain.ErrPoolExhausted
 		}
 	}
 
@@ -122,7 +114,6 @@ func (s *KeyGenService) refillBuffer(ctx context.Context) error {
 	return nil
 }
 
-// replenishLoop monitors the available key pool and generates new keys when low.
 func (s *KeyGenService) replenishLoop(ctx context.Context) {
 	ticker := time.NewTicker(30 * time.Second)
 	defer ticker.Stop()

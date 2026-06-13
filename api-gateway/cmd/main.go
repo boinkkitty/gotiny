@@ -18,22 +18,22 @@ import (
 	userpb "gotiny/proto/user"
 
 	"gotiny/api-gateway/internal/handler"
+	"gotiny/pkg/config"
+	"gotiny/pkg/logger"
 )
 
 func main() {
-	port := envOr("PORT", "8080")
-	urlServiceAddr := envOr("URL_SERVICE_ADDR", "localhost:50051")
-	redirectServiceAddr := envOr("REDIRECT_SERVICE_ADDR", "localhost:50052")
-	userServiceAddr := envOr("USER_SERVICE_ADDR", "localhost:50054")
+	port := config.EnvOr("PORT", "8080")
+	urlServiceAddr := config.EnvOr("URL_SERVICE_ADDR", "localhost:50051")
+	redirectServiceAddr := config.EnvOr("REDIRECT_SERVICE_ADDR", "localhost:50052")
+	userServiceAddr := config.EnvOr("USER_SERVICE_ADDR", "localhost:50054")
 	jwtSecret := os.Getenv("JWT_SECRET")
 	if jwtSecret == "" {
 		slog.Error("JWT_SECRET environment variable is required")
 		os.Exit(1)
 	}
 
-	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stdout, nil)).With(
-		"service", "api-gateway",
-	))
+	logger.Init("api-gateway")
 
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
 	defer cancel()
@@ -68,7 +68,6 @@ func main() {
 
 	mux := http.NewServeMux()
 
-	// Public routes (no auth)
 	mux.HandleFunc("POST /register", h.Register)
 	mux.HandleFunc("POST /login", h.Login)
 	mux.HandleFunc("POST /refresh", h.Refresh)
@@ -78,7 +77,6 @@ func main() {
 		fmt.Fprint(w, "ok")
 	})
 
-	// Protected routes (require JWT)
 	protectedMux := http.NewServeMux()
 	protectedMux.HandleFunc("POST /shorten", h.Shorten)
 	protectedMux.HandleFunc("GET /urls", h.ListURLs)
@@ -87,7 +85,6 @@ func main() {
 	mux.Handle("GET /urls", authMiddleware(protectedMux))
 	mux.Handle("DELETE /urls/{code}", authMiddleware(protectedMux))
 
-	// Redirect (public, no auth)
 	mux.HandleFunc("GET /{code}", h.Redirect)
 
 	server := &http.Server{
@@ -111,11 +108,4 @@ func main() {
 		slog.Error("serve failed", "error", err)
 		os.Exit(1)
 	}
-}
-
-func envOr(key, fallback string) string {
-	if v := os.Getenv(key); v != "" {
-		return v
-	}
-	return fallback
 }

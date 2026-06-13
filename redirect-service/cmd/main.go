@@ -2,33 +2,33 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
-	"net"
 	"os"
 	"os/signal"
 	"syscall"
 
-	"github.com/redis/go-redis/v9"
+	goredis "github.com/redis/go-redis/v9"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/health"
-	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 
 	pb "gotiny/proto/redirect"
 
+	"gotiny/pkg/config"
 	"gotiny/pkg/database"
-	"gotiny/redirect-service/internal/handler"
-	"gotiny/redirect-service/internal/repository"
+	"gotiny/pkg/grpcutil"
+	"gotiny/pkg/logger"
+	"gotiny/redirect-service/internal/adapter/postgres"
+	redisadapter "gotiny/redirect-service/internal/adapter/redis"
+	svcport "gotiny/redirect-service/internal/port"
+	"gotiny/redirect-service/internal/server"
+	"gotiny/redirect-service/internal/service"
 )
 
 func main() {
-	port := envOr("PORT", "50052")
-	dsn := envOr("DATABASE_URL", "postgres://postgres:postgres@localhost:5432/gotiny?sslmode=disable")
-	redisAddr := envOr("REDIS_ADDR", "localhost:6379")
+	port := config.EnvOr("PORT", "50052")
+	dsn := config.EnvOr("DATABASE_URL", "postgres://postgres:postgres@localhost:5432/gotiny?sslmode=disable")
+	redisAddr := config.EnvOr("REDIS_ADDR", "localhost:6379")
 
-	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stdout, nil)).With(
-		"service", "redirect",
-	))
+	logger.Init("redirect")
 
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
 	defer cancel()
@@ -40,49 +40,30 @@ func main() {
 	}
 	defer pool.Close()
 
-	rdb := redis.NewClient(&redis.Options{Addr: redisAddr})
+	reader := postgres.NewURLRepository(pool)
+
+	var cache svcport.URLCache
+	rdb := goredis.NewClient(&goredis.Options{Addr: redisAddr})
 	if err := rdb.Ping(ctx).Err(); err != nil {
 		slog.Warn("redis connection failed, running without cache", "error", err)
-		rdb = nil
+		rdb.Close()
 	} else {
 		slog.Info("redis connected", "addr", redisAddr)
+		cache = redisadapter.NewURLCache(rdb)
+		defer rdb.Close()
 	}
 
-	repo := repository.NewURLRepository(pool, rdb)
+	svc := service.NewRedirectService(reader, cache)
+	h := server.NewRedirectHandler(svc)
 
-	grpcServer := grpc.NewServer()
-	pb.RegisterRedirectServiceServer(grpcServer, handler.NewRedirectHandler(repo))
-
-	healthServer := health.NewServer()
-	healthpb.RegisterHealthServer(grpcServer, healthServer)
-	healthServer.SetServingStatus("redirect", healthpb.HealthCheckResponse_SERVING)
-
-	lis, err := net.Listen("tcp", fmt.Sprintf(":%s", port))
-	if err != nil {
-		slog.Error("listen failed", "error", err, "port", port)
-		os.Exit(1)
-	}
-
-	go func() {
-		<-ctx.Done()
-		slog.Info("shutting down")
-		healthServer.SetServingStatus("redirect", healthpb.HealthCheckResponse_NOT_SERVING)
-		grpcServer.GracefulStop()
-		if rdb != nil {
-			rdb.Close()
-		}
-	}()
-
-	slog.Info("redirect service starting", "port", port)
-	if err := grpcServer.Serve(lis); err != nil {
+	if err := grpcutil.RunServer(ctx, grpcutil.ServerConfig{
+		Port:        port,
+		ServiceName: "redirect",
+		RegisterFunc: func(s *grpc.Server) {
+			pb.RegisterRedirectServiceServer(s, h)
+		},
+	}); err != nil {
 		slog.Error("serve failed", "error", err)
 		os.Exit(1)
 	}
-}
-
-func envOr(key, fallback string) string {
-	if v := os.Getenv(key); v != "" {
-		return v
-	}
-	return fallback
 }
