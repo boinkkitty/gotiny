@@ -8,28 +8,28 @@ import (
 	"google.golang.org/grpc"
 
 	pb "gotiny/proto/keygen"
-	"gotiny/url-service/internal/repository"
+	"gotiny/url-service/internal/domain"
 )
 
 type mockURLRepo struct {
-	storeErr    error
-	getResult   *repository.URL
-	getErr      error
-	listResult  []*repository.URL
-	listTotal   int32
-	listErr     error
-	deleteErr   error
+	storeErr   error
+	getResult  *domain.URL
+	getErr     error
+	listResult []*domain.URL
+	listTotal  int32
+	listErr    error
+	deleteErr  error
 }
 
 func (m *mockURLRepo) Store(_ context.Context, _, _ string, _ int64) error {
 	return m.storeErr
 }
 
-func (m *mockURLRepo) GetByShortCode(_ context.Context, _ string, _ int64) (*repository.URL, error) {
+func (m *mockURLRepo) GetByShortCode(_ context.Context, _ string, _ int64) (*domain.URL, error) {
 	return m.getResult, m.getErr
 }
 
-func (m *mockURLRepo) ListByUserID(_ context.Context, _ int64, _, _ int32) ([]*repository.URL, int32, error) {
+func (m *mockURLRepo) ListByUserID(_ context.Context, _ int64, _, _ int32) ([]*domain.URL, int32, error) {
 	return m.listResult, m.listTotal, m.listErr
 }
 
@@ -96,12 +96,12 @@ func TestDeleteURL_Success(t *testing.T) {
 
 func TestDeleteURL_NotOwner(t *testing.T) {
 	svc := NewURLService(
-		&mockURLRepo{deleteErr: repository.ErrNotOwner},
+		&mockURLRepo{deleteErr: domain.ErrNotOwner},
 		&mockKeyGenClient{},
 	)
 
 	err := svc.DeleteURL(context.Background(), "abc1234", 99)
-	if !errors.Is(err, repository.ErrNotOwner) {
+	if !errors.Is(err, domain.ErrNotOwner) {
 		t.Fatalf("expected ErrNotOwner, got %v", err)
 	}
 }

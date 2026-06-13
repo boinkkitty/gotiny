@@ -8,32 +8,32 @@ import (
 
 	"golang.org/x/crypto/bcrypt"
 
-	"gotiny/user-service/internal/repository"
+	"gotiny/user-service/internal/domain"
 )
 
 type mockUserRepo struct {
-	createUser    *repository.User
+	createUser    *domain.User
 	createErr     error
-	getUser       *repository.User
+	getUser       *domain.User
 	getErr        error
 	storeToken    string
 	storeTokenErr error
-	getToken      *repository.RefreshToken
+	getToken      *domain.RefreshToken
 	getTokenErr   error
 	revokeErr     error
 }
 
-func (m *mockUserRepo) CreateUser(_ context.Context, email, passwordHash string) (*repository.User, error) {
+func (m *mockUserRepo) CreateUser(_ context.Context, email, passwordHash string) (*domain.User, error) {
 	if m.createErr != nil {
 		return nil, m.createErr
 	}
 	if m.createUser != nil {
 		return m.createUser, nil
 	}
-	return &repository.User{ID: 1, Email: email, PasswordHash: passwordHash}, nil
+	return &domain.User{ID: 1, Email: email, PasswordHash: passwordHash}, nil
 }
 
-func (m *mockUserRepo) GetUserByEmail(_ context.Context, _ string) (*repository.User, error) {
+func (m *mockUserRepo) GetUserByEmail(_ context.Context, _ string) (*domain.User, error) {
 	return m.getUser, m.getErr
 }
 
@@ -47,7 +47,7 @@ func (m *mockUserRepo) StoreRefreshToken(_ context.Context, _ int64, _ time.Time
 	return "refresh-token-abc", nil
 }
 
-func (m *mockUserRepo) GetRefreshToken(_ context.Context, _ string) (*repository.RefreshToken, error) {
+func (m *mockUserRepo) GetRefreshToken(_ context.Context, _ string) (*domain.RefreshToken, error) {
 	return m.getToken, m.getTokenErr
 }
 
@@ -75,12 +75,12 @@ func TestRegister_Success(t *testing.T) {
 
 func TestRegister_EmailExists(t *testing.T) {
 	svc := NewUserService(
-		&mockUserRepo{createErr: repository.ErrEmailExists},
+		&mockUserRepo{createErr: domain.ErrEmailExists},
 		"test-secret",
 	)
 
 	_, err := svc.Register(context.Background(), "existing@example.com", "password123")
-	if !errors.Is(err, repository.ErrEmailExists) {
+	if !errors.Is(err, domain.ErrEmailExists) {
 		t.Fatalf("expected ErrEmailExists, got %v", err)
 	}
 }
@@ -89,7 +89,7 @@ func TestLogin_Success(t *testing.T) {
 	hash, _ := bcrypt.GenerateFromPassword([]byte("password123"), bcryptCost)
 	svc := NewUserService(
 		&mockUserRepo{
-			getUser: &repository.User{ID: 1, Email: "user@example.com", PasswordHash: string(hash)},
+			getUser: &domain.User{ID: 1, Email: "user@example.com", PasswordHash: string(hash)},
 		},
 		"test-secret",
 	)
@@ -107,25 +107,25 @@ func TestLogin_WrongPassword(t *testing.T) {
 	hash, _ := bcrypt.GenerateFromPassword([]byte("correct-password"), bcryptCost)
 	svc := NewUserService(
 		&mockUserRepo{
-			getUser: &repository.User{ID: 1, Email: "user@example.com", PasswordHash: string(hash)},
+			getUser: &domain.User{ID: 1, Email: "user@example.com", PasswordHash: string(hash)},
 		},
 		"test-secret",
 	)
 
 	_, err := svc.Login(context.Background(), "user@example.com", "wrong-password")
-	if !errors.Is(err, repository.ErrUserNotFound) {
+	if !errors.Is(err, domain.ErrUserNotFound) {
 		t.Fatalf("expected ErrUserNotFound (no user enumeration), got %v", err)
 	}
 }
 
 func TestLogin_UserNotFound(t *testing.T) {
 	svc := NewUserService(
-		&mockUserRepo{getErr: repository.ErrUserNotFound},
+		&mockUserRepo{getErr: domain.ErrUserNotFound},
 		"test-secret",
 	)
 
 	_, err := svc.Login(context.Background(), "nobody@example.com", "password123")
-	if !errors.Is(err, repository.ErrUserNotFound) {
+	if !errors.Is(err, domain.ErrUserNotFound) {
 		t.Fatalf("expected ErrUserNotFound, got %v", err)
 	}
 }
@@ -133,7 +133,7 @@ func TestLogin_UserNotFound(t *testing.T) {
 func TestRefreshToken_Success(t *testing.T) {
 	svc := NewUserService(
 		&mockUserRepo{
-			getToken: &repository.RefreshToken{
+			getToken: &domain.RefreshToken{
 				ID:        1,
 				UserID:    1,
 				Token:     "old-token",
@@ -154,12 +154,12 @@ func TestRefreshToken_Success(t *testing.T) {
 
 func TestRefreshToken_Invalid(t *testing.T) {
 	svc := NewUserService(
-		&mockUserRepo{getTokenErr: repository.ErrTokenInvalid},
+		&mockUserRepo{getTokenErr: domain.ErrTokenInvalid},
 		"test-secret",
 	)
 
 	_, err := svc.RefreshToken(context.Background(), "bad-token")
-	if !errors.Is(err, repository.ErrTokenInvalid) {
+	if !errors.Is(err, domain.ErrTokenInvalid) {
 		t.Fatalf("expected ErrTokenInvalid, got %v", err)
 	}
 }

@@ -10,27 +10,20 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
 
-	"gotiny/user-service/internal/repository"
+	"gotiny/user-service/internal/domain"
+	"gotiny/user-service/internal/port"
 )
 
 const bcryptCost = 10
 
-type UserRepository interface {
-	CreateUser(ctx context.Context, email, passwordHash string) (*repository.User, error)
-	GetUserByEmail(ctx context.Context, email string) (*repository.User, error)
-	StoreRefreshToken(ctx context.Context, userID int64, expiresAt time.Time) (string, error)
-	GetRefreshToken(ctx context.Context, token string) (*repository.RefreshToken, error)
-	RevokeRefreshToken(ctx context.Context, token string) error
-}
-
 type UserService struct {
-	repo             UserRepository
-	jwtSecret        []byte
-	accessTokenTTL   time.Duration
-	refreshTokenTTL  time.Duration
+	repo            port.UserRepository
+	jwtSecret       []byte
+	accessTokenTTL  time.Duration
+	refreshTokenTTL time.Duration
 }
 
-func NewUserService(repo UserRepository, jwtSecret string) *UserService {
+func NewUserService(repo port.UserRepository, jwtSecret string) *UserService {
 	return &UserService{
 		repo:            repo,
 		jwtSecret:       []byte(jwtSecret),
@@ -63,14 +56,14 @@ func (s *UserService) Register(ctx context.Context, email, password string) (*Au
 func (s *UserService) Login(ctx context.Context, email, password string) (*AuthResult, error) {
 	user, err := s.repo.GetUserByEmail(ctx, email)
 	if err != nil {
-		if errors.Is(err, repository.ErrUserNotFound) {
-			return nil, repository.ErrUserNotFound
+		if errors.Is(err, domain.ErrUserNotFound) {
+			return nil, domain.ErrUserNotFound
 		}
 		return nil, err
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password)); err != nil {
-		return nil, repository.ErrUserNotFound
+		return nil, domain.ErrUserNotFound
 	}
 
 	slog.Info("user logged in", "user_id", user.ID)

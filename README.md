@@ -54,6 +54,51 @@ A URL shortener built in Go with gRPC microservices architecture, demonstrating 
 
 **Multi-Module Monorepo.** Each service has its own `go.mod` with `replace` directives pointing to shared modules (`proto/`, `pkg/`). This enforces real module boundaries while keeping everything in one repo.
 
+### Internal Architecture (Hexagonal)
+
+Each gRPC service follows hexagonal architecture with inward-pointing dependencies:
+
+```
+cmd/main.go                 → Wiring, startup, graceful shutdown
+internal/
+  domain/                   → Entities, value objects, domain errors (zero deps)
+  port/                     → Interfaces only (repository, cache)
+  service/                  → Business logic (accepts/returns domain types only)
+  server/                   → gRPC transport layer (maps proto ↔ domain)
+  adapter/
+    postgres/               → Repository implementations
+    redis/                  → Cache implementations (redirect-service only)
+```
+
+The api-gateway is a reverse proxy with no domain logic. It keeps a flat `internal/handler/` structure.
+
+Dependencies flow inward: adapters implement ports, services depend on ports, domain depends on nothing.
+
+```
+server/ → service/ → port/ ← adapter/
+                       ↕
+                    domain/
+```
+
+| Layer | Contains | Rule |
+|-------|----------|------|
+| `domain/` | Entities, value objects, typed errors | No imports from proto, SQL, or HTTP packages |
+| `port/` | Interface contracts | Abstract only, no implementation details |
+| `service/` | Business logic | Accepts/returns domain types only |
+| `server/` | gRPC handlers | Only layer that knows about proto types |
+| `adapter/` | Postgres, Redis implementations | Only layer that knows about DB/cache types |
+
+### Shared Packages (`pkg/`)
+
+| Package | Purpose |
+|---------|---------|
+| `config` | `EnvOr` helper for environment variable loading with fallback defaults |
+| `logger` | Structured `slog` logging init with JSON handler and service name attribute |
+| `database` | PostgreSQL connection pool setup |
+| `grpcutil` | gRPC server lifecycle (health checks, graceful shutdown) and metadata helpers |
+
+For the full architecture notes and post-refactor constraints, see [docs/architecture.md](/Users/daryl/Desktop/code/gotiny/docs/architecture.md).
+
 ## Quick Start
 
 ```bash
@@ -104,8 +149,8 @@ gotiny/
 ├── key-gen-service/     # Distributed key pool management
 ├── user-service/        # User auth (register, login, JWT lifecycle)
 ├── proto/               # Shared Protocol Buffer definitions
-├── pkg/                 # Shared Go packages (database, grpcutil)
-├── docs/                # Architecture and flow diagrams
+├── pkg/                 # Shared Go packages (config, database, grpcutil, logger)
+├── docs/                # Architecture notes and auth flow diagrams
 ├── migrations/          # PostgreSQL schema migrations
 ├── docker-compose.yml   # Full stack orchestration (6 services)
 └── Makefile             # Build, test, run commands
@@ -124,7 +169,7 @@ make lint     # Run go vet on all services
 
 ```bash
 cd redirect-service
-go test -bench=. -benchmem ./internal/repository/
+go test -bench=. -benchmem ./internal/adapter/postgres/
 ```
 
 ## Tech Stack

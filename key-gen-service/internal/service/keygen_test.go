@@ -4,9 +4,12 @@ import (
 	"context"
 	"errors"
 	"testing"
+
+	"gotiny/key-gen-service/internal/domain"
+	"gotiny/key-gen-service/internal/port"
 )
 
-var _ KeyRepository = (*mockRepo)(nil)
+var _ port.KeyRepository = (*mockRepo)(nil)
 
 type mockRepo struct {
 	claimFunc    func(ctx context.Context, instanceID string, batchSize int) ([]string, error)
@@ -78,11 +81,9 @@ func TestGetKey_BufferEmpty_RefillSucceeds(t *testing.T) {
 		t.Fatalf("init: %v", err)
 	}
 
-	// Drain the initial buffer
 	svc.GetKey(context.Background())
 	svc.GetKey(context.Background())
 
-	// Next call should trigger refill
 	key, err := svc.GetKey(context.Background())
 	if err != nil {
 		t.Fatalf("get key after refill: %v", err)
@@ -111,10 +112,8 @@ func TestGetKey_BufferEmpty_RefillFails(t *testing.T) {
 		t.Fatalf("init: %v", err)
 	}
 
-	// Drain
 	svc.GetKey(context.Background())
 
-	// Should fail
 	_, err := svc.GetKey(context.Background())
 	if err == nil {
 		t.Fatal("expected error when refill fails")
@@ -124,7 +123,7 @@ func TestGetKey_BufferEmpty_RefillFails(t *testing.T) {
 func TestGetKey_PoolExhausted(t *testing.T) {
 	repo := &mockRepo{
 		claimFunc: func(_ context.Context, _ string, _ int) ([]string, error) {
-			return nil, nil // No keys available
+			return nil, nil
 		},
 	}
 
@@ -132,14 +131,13 @@ func TestGetKey_PoolExhausted(t *testing.T) {
 		InstanceID: "test", BufferSize: 5, RefillAt: 0, PoolThreshold: 1000, PoolBatchSize: 100,
 	})
 
-	// Init will fill buffer with 0 keys (empty claim returns nil)
 	svc.Init(context.Background())
 
 	_, err := svc.GetKey(context.Background())
 	if err == nil {
 		t.Fatal("expected error when pool exhausted")
 	}
-	if !errors.Is(err, ErrPoolExhausted) {
+	if !errors.Is(err, domain.ErrPoolExhausted) {
 		t.Errorf("expected ErrPoolExhausted, got %v", err)
 	}
 }

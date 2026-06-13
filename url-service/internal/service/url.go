@@ -6,22 +6,16 @@ import (
 	"log/slog"
 
 	pb "gotiny/proto/keygen"
-	"gotiny/url-service/internal/repository"
+	"gotiny/url-service/internal/domain"
+	"gotiny/url-service/internal/port"
 )
 
-type URLRepository interface {
-	Store(ctx context.Context, shortCode, originalURL string, userID int64) error
-	GetByShortCode(ctx context.Context, shortCode string, userID int64) (*repository.URL, error)
-	ListByUserID(ctx context.Context, userID int64, limit, offset int32) ([]*repository.URL, int32, error)
-	DeleteByShortCode(ctx context.Context, shortCode string, userID int64) error
-}
-
 type URLService struct {
-	repo         URLRepository
+	repo         port.URLRepository
 	keygenClient pb.KeyGenServiceClient
 }
 
-func NewURLService(repo URLRepository, keygenClient pb.KeyGenServiceClient) *URLService {
+func NewURLService(repo port.URLRepository, keygenClient pb.KeyGenServiceClient) *URLService {
 	return &URLService{
 		repo:         repo,
 		keygenClient: keygenClient,
@@ -42,11 +36,11 @@ func (s *URLService) CreateShortURL(ctx context.Context, originalURL string, use
 	return resp.Key, nil
 }
 
-func (s *URLService) GetURL(ctx context.Context, shortCode string, userID int64) (*repository.URL, error) {
+func (s *URLService) GetURL(ctx context.Context, shortCode string, userID int64) (*domain.URL, error) {
 	return s.repo.GetByShortCode(ctx, shortCode, userID)
 }
 
-func (s *URLService) ListURLs(ctx context.Context, userID int64, limit, offset int32) ([]*repository.URL, int32, error) {
+func (s *URLService) ListURLs(ctx context.Context, userID int64, limit, offset int32) ([]*domain.URL, int32, error) {
 	if limit <= 0 || limit > 100 {
 		limit = 20
 	}
