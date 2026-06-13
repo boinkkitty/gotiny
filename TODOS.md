@@ -12,7 +12,7 @@
 
 **Effort:** M
 **Priority:** P1
-**Depends on:** hex refactor (service layer for redirect-service)
+**Depends on:** None (hex refactor landed in v0.2.1.0)
 
 ### Bcrypt Password Length Cap
 
@@ -38,6 +38,6 @@
 
 **Effort:** M
 **Priority:** P2
-**Depends on:** hex refactor merged
+**Depends on:** None (hex refactor landed in v0.2.1.0)
 
 ## Completed

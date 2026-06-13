@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.1.1] - 2026-06-14
+
+### Changed
+- Merged the standalone hexagonal architecture notes into tracked docs with a new `docs/architecture.md`
+- Linked the README architecture overview to the detailed architecture notes and clarified the `docs/` directory purpose
+- Updated TODO dependencies to reflect that the hex refactor already shipped in `0.2.1.0`
+
 ## [0.2.1.0] - 2026-06-13
 
 ### Changed
