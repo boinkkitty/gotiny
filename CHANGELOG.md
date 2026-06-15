@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.3.0.0] - 2026-06-15
+
+### Added
+- Redis List as shared key queue between Postgres and key-gen instances (RPUSH/LPOP/LLEN)
+- Circuit breaker for Redis connectivity with automatic fallback to in-memory buffer
+- Distributed refill lock using Lua script for atomic LLEN check + SET NX EX
+- Reactive queue refill with atomic.Bool deduplication under high load
+- Reconciliation loop to reclaim orphaned 'claimed' keys older than 1 hour
+- Key queue port interfaces (KeyQueue, RefillLock) following hexagonal architecture
+- Redis adapter tests for redirect-service using miniredis (closes pre-existing test gap)
+- 39 new tests: circuit breaker, Redis queue/lock adapters, Redis key path, reconciliation
+
+### Changed
+- key-gen-service GetKey hot path: Redis LPOP (100ms) first, local buffer fallback
+- key-gen-service Init pre-fills Redis queue; circuit starts OPEN if Redis unavailable
+- Two separate refill loops: queue refill (5s tick), pool generation (30s tick)
+- key-gen-service now depends on Redis in docker-compose (shared with redirect-service)
+
 ## [0.2.1.1] - 2026-06-14
 
 ### Changed

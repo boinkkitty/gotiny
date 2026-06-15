@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"fmt"
 	"math/big"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -107,6 +108,18 @@ func (r *KeysRepository) GenerateBatch(ctx context.Context, count int) (int64, e
 	}
 
 	return totalInserted, nil
+}
+
+func (r *KeysRepository) ReclaimOrphaned(ctx context.Context, olderThan time.Duration) (int64, error) {
+	tag, err := r.pool.Exec(ctx,
+		`UPDATE keys SET status = 'available', claimed_by = NULL, claimed_at = NULL
+		 WHERE status = 'claimed' AND claimed_at < NOW() - $1::interval AND used_at IS NULL`,
+		olderThan.String(),
+	)
+	if err != nil {
+		return 0, fmt.Errorf("reclaim orphaned keys: %w", err)
+	}
+	return tag.RowsAffected(), nil
 }
 
 func randomBase62(length int) (string, error) {

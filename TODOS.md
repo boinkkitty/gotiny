@@ -40,4 +40,16 @@
 **Priority:** P2
 **Depends on:** None (hex refactor landed in v0.2.1.0)
 
+### Redis Key Queue Observability
+
+**What:** Add Prometheus metrics for the Redis key queue in key-gen-service.
+
+**Why:** The Redis key queue introduces a new operational layer between Postgres and key-gen instances. Without observability, queue exhaustion, refill lock contention, and Redis degradation are invisible until they surface as user-facing latency or errors.
+
+**Context:** Metrics to add: LLEN gauge (pool depth), LPOP rate, refill events, refill lock contention count, Redis error rate, fallback-to-Postgres activations. Track Redis vs Postgres-direct hit rate as a percentage (target >99% Redis under normal load). Compare p50/p99 latency of shorten endpoint with Redis queue vs baseline. Alert if LLEN drops below critical floor (100). Instrument in `key-gen-service/internal/service/keygen.go` and `key-gen-service/internal/adapter/redis/`.
+
+**Effort:** M
+**Priority:** P2
+**Depends on:** Redis key queue (feat/shorten-cache)
+
 ## Completed
