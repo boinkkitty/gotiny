@@ -34,8 +34,11 @@ services:
     environment:
       PORT: "50053"
       DATABASE_URL: "postgres://postgres:postgres@postgres:5432/gotiny?sslmode=disable"
+      REDIS_ADDR: "redis:6379"
     depends_on:
       postgres:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     restart: on-failure
 

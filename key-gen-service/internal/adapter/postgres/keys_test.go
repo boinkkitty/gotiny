@@ -104,6 +104,45 @@ func TestClaimBatchExhausted(t *testing.T) {
 	}
 }
 
+func TestReclaimOrphaned(t *testing.T) {
+	pool := setupTestDB(t)
+	repo := postgres.NewKeysRepository(pool)
+	ctx := context.Background()
+
+	if _, err := repo.GenerateBatch(ctx, 10); err != nil {
+		t.Fatalf("generate: %v", err)
+	}
+
+	codes, err := repo.ClaimBatch(ctx, "00000000-0000-0000-0000-000000000001", 5)
+	if err != nil {
+		t.Fatalf("claim: %v", err)
+	}
+	if len(codes) != 5 {
+		t.Fatalf("expected 5 claimed, got %d", len(codes))
+	}
+
+	// Backdate claimed_at so they qualify for reclamation
+	_, err = pool.Exec(ctx,
+		`UPDATE keys SET claimed_at = NOW() - INTERVAL '2 hours' WHERE status = 'claimed'`,
+	)
+	if err != nil {
+		t.Fatalf("backdate: %v", err)
+	}
+
+	reclaimed, err := repo.ReclaimOrphaned(ctx, time.Hour)
+	if err != nil {
+		t.Fatalf("reclaim: %v", err)
+	}
+	if reclaimed != 5 {
+		t.Errorf("expected 5 reclaimed, got %d", reclaimed)
+	}
+
+	available, _ := repo.CountAvailable(ctx)
+	if available != 10 {
+		t.Errorf("expected 10 available after reclaim, got %d", available)
+	}
+}
+
 func TestMultiInstanceCoordination(t *testing.T) {
 	pool := setupTestDB(t)
 	repo := postgres.NewKeysRepository(pool)

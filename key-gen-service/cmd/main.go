@@ -8,11 +8,14 @@ import (
 	"syscall"
 
 	"github.com/google/uuid"
+	goredis "github.com/redis/go-redis/v9"
 	"google.golang.org/grpc"
 
 	pb "gotiny/proto/keygen"
 
 	"gotiny/key-gen-service/internal/adapter/postgres"
+	redisadapter "gotiny/key-gen-service/internal/adapter/redis"
+	"gotiny/key-gen-service/internal/port"
 	"gotiny/key-gen-service/internal/server"
 	"gotiny/key-gen-service/internal/service"
 	"gotiny/pkg/config"
@@ -22,8 +25,9 @@ import (
 )
 
 func main() {
-	port := config.EnvOr("PORT", "50053")
+	listenPort := config.EnvOr("PORT", "50053")
 	dsn := config.EnvOr("DATABASE_URL", "postgres://postgres:postgres@localhost:5432/gotiny?sslmode=disable")
+	redisAddr := config.EnvOr("REDIS_ADDR", "")
 
 	instanceID := uuid.New().String()
 
@@ -42,7 +46,21 @@ func main() {
 
 	repo := postgres.NewKeysRepository(pool)
 	cfg := service.DefaultConfig(instanceID)
-	svc := service.NewKeyGenService(repo, cfg)
+
+	var (
+		queue port.KeyQueue
+		lock  port.RefillLock
+	)
+
+	if redisAddr != "" {
+		rdb := goredis.NewClient(&goredis.Options{Addr: redisAddr})
+		defer rdb.Close()
+		queue = redisadapter.NewKeyQueue(rdb)
+		lock = redisadapter.NewRefillLock(rdb, instanceID, cfg.LockTTL)
+		slog.Info("redis queue enabled", "addr", redisAddr)
+	}
+
+	svc := service.NewKeyGenService(repo, queue, lock, cfg)
 
 	if err := svc.Init(ctx); err != nil {
 		slog.Error("service init failed", "error", err)
@@ -52,7 +70,7 @@ func main() {
 	h := server.NewKeyGenHandler(svc)
 
 	if err := grpcutil.RunServer(ctx, grpcutil.ServerConfig{
-		Port:        port,
+		Port:        listenPort,
 		ServiceName: "keygen",
 		RegisterFunc: func(s *grpc.Server) {
 			pb.RegisterKeyGenServiceServer(s, h)

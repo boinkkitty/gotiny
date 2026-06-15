@@ -3,6 +3,7 @@ package server_test
 import (
 	"context"
 	"testing"
+	"time"
 
 	"gotiny/key-gen-service/internal/server"
 	"gotiny/key-gen-service/internal/service"
@@ -20,14 +21,14 @@ func (m *mockRepo) ClaimBatch(ctx context.Context, instanceID string, batchSize 
 	return m.claimFunc(ctx, instanceID, batchSize)
 }
 
-func (m *mockRepo) CountAvailable(_ context.Context) (int64, error) { return 100000, nil }
-func (m *mockRepo) GenerateBatch(_ context.Context, count int) (int64, error) {
-	return int64(count), nil
-}
+func (m *mockRepo) CountAvailable(_ context.Context) (int64, error)              { return 100000, nil }
+func (m *mockRepo) GenerateBatch(_ context.Context, count int) (int64, error)    { return int64(count), nil }
+func (m *mockRepo) ReclaimOrphaned(_ context.Context, _ time.Duration) (int64, error) { return 0, nil }
 
 func newTestService(repo *mockRepo) *service.KeyGenService {
-	svc := service.NewKeyGenService(repo, service.Config{
+	svc := service.NewKeyGenService(repo, nil, nil, service.Config{
 		InstanceID: "test", BufferSize: 10, RefillAt: 2, PoolThreshold: 1000, PoolBatchSize: 100,
+		ReconcileTick: time.Hour, ReconcileMaxAge: time.Hour,
 	})
 	svc.Init(context.Background())
 	return svc
@@ -61,8 +62,9 @@ func TestGetKeyPoolExhausted(t *testing.T) {
 		},
 	}
 
-	svc := service.NewKeyGenService(repo, service.Config{
+	svc := service.NewKeyGenService(repo, nil, nil, service.Config{
 		InstanceID: "test", BufferSize: 5, RefillAt: 0, PoolThreshold: 1000, PoolBatchSize: 100,
+		ReconcileTick: time.Hour, ReconcileMaxAge: time.Hour,
 	})
 	svc.Init(context.Background())
 

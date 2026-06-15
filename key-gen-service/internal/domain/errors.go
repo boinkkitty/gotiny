@@ -2,4 +2,7 @@ package domain
 
 import "errors"
 
-var ErrPoolExhausted = errors.New("key pool exhausted")
+var (
+	ErrPoolExhausted = errors.New("key pool exhausted")
+	ErrQueueEmpty    = errors.New("key queue empty")
+)
